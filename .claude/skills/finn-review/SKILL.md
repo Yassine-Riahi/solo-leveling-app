@@ -23,7 +23,7 @@ review, say so and end the pass.
 
 ## 2. Read the contract and code
 
-- Parse the linked issue identifier from `Closes TEAM-NNN` in the PR body and
+- Parse the linked issue identifier from `Closes SOL-NNN` in the PR body and
   fetch the full Linear issue, including comments and relations. No linked
   issue is a must-fix finding.
 - Read the full diff and every changed file in context.

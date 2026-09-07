@@ -44,7 +44,7 @@ iteration from retrying a decision only a human can make.
 
 ## 2. Pick
 
-Using the Linear connector, list issues on team `TEAM` that meet every
+Using the Linear connector, list issues on team `SOL` that meet every
 condition:
 
 - labeled `agent-ready`
@@ -79,7 +79,7 @@ on an unresolved blocker, go to step 8. Never guess.
 ## 5. Build
 
 - Fetch the latest default branch from `origin` and create or resume a branch
-  named `TEAM-NNN-short-slug`, using the issue's real identifier.
+  named `SOL-NNN-short-slug`, using the issue's real identifier.
 - Implement the acceptance criteria using the repository's existing style,
   architecture, and naming.
 - Add or update tests when the change affects logic, data flow, permissions,
@@ -101,7 +101,7 @@ unrelated work or generated secrets.
 Push and open a PR with `gh pr create`. Its description must include:
 
 - What changed and why
-- `Closes TEAM-NNN`, using the real Linear issue identifier
+- `Closes SOL-NNN`, using the real Linear issue identifier
 - A scope ledger: one evidence line per `AC-N`, one preservation line per
   `NG-N`, and `Other behavior changes: None`
 - Numbered manual test steps matching what was actually built

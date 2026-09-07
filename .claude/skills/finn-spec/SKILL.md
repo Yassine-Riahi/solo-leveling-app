@@ -85,7 +85,7 @@ Rules for the draft:
 ## 4. Confirm and file
 
 Show the full draft in chat and get the user's go-ahead. Then create the
-issue on the configured `TEAM` Linear team (via the Linear connector) with
+issue on the configured `SOL` Linear team (via the Linear connector) with
 the draft as the body. Report the exact issue identifier and URL returned by
 Linear; later skills use that identifier rather than guessing it.
 
