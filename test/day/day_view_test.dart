@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:solo_leveling_app/src/day/day.dart';
 import 'package:solo_leveling_app/src/prayer/prayer.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 /// 2024-06-01 12:00 UTC is 13:00 in Tunis (UTC+1, no DST), which falls inside
 /// that day's Dhuhr window. Expressed in UTC so the result cannot depend on
@@ -193,13 +194,24 @@ void main() {
     );
 
     // The span runs from the hour at or before Fajr to the hour at or after
-    // Isha's end, inclusive of both boundaries.
-    final int firstHour = schedule.fajr.start.hour;
-    final DateTime end = schedule.isha.end;
-    final int spanHours =
-        end.difference(DateTime(end.year, end.month, end.day, firstHour))
-                .inHours +
-            (end.minute > 0 ? 1 : 0);
+    // Isha's end, inclusive of both boundaries. Computed with zone-aware
+    // arithmetic only, so the expectation cannot depend on the host's
+    // timezone.
+    final tz.Location location = schedule.fajr.start.location;
+    tz.TZDateTime floorToHour(tz.TZDateTime moment) => tz.TZDateTime(
+          location,
+          moment.year,
+          moment.month,
+          moment.day,
+          moment.hour,
+        );
+
+    final tz.TZDateTime spanStart = floorToHour(schedule.fajr.start);
+    final tz.TZDateTime endFloor = floorToHour(schedule.isha.end);
+    final tz.TZDateTime spanEnd = endFloor == schedule.isha.end
+        ? endFloor
+        : endFloor.add(const Duration(hours: 1));
+    final int expectedLabels = spanEnd.difference(spanStart).inHours + 1;
 
     for (final String label in <String>['04:00', '12:00', '20:00']) {
       expect(find.text(label), findsOneWidget, reason: 'missing $label');
@@ -209,7 +221,7 @@ void main() {
         .widgetList<Text>(find.byType(Text))
         .where((Text t) => RegExp(r'^\d{2}:00$').hasMatch(t.data ?? ''))
         .length;
-    expect(labelCount, spanHours + 1);
+    expect(labelCount, expectedLabels);
 
     await _teardown(tester);
   });
