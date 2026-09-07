@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate-skills:
+    name: validate-skills
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate SKILL.md frontmatter
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(.claude/skills/*/SKILL.md)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No SKILL.md files present; nothing to validate."
+            exit 0
+          fi
+          status=0
+          for f in "${files[@]}"; do
+            if [ "$(head -1 "$f")" != "---" ]; then
+              echo "::error file=$f::missing opening --- frontmatter delimiter"
+              status=1
+              continue
+            fi
+            if ! awk 'NR>1 && /^---$/{found=1; exit} END{exit !found}' "$f"; then
+              echo "::error file=$f::missing closing --- frontmatter delimiter"
+              status=1
+              continue
+            fi
+            fm=$(awk 'NR>1 && /^---$/{exit} NR>1' "$f")
+            for key in name description; do
+              if ! grep -q "^$key:" <<<"$fm"; then
+                echo "::error file=$f::frontmatter missing required key '$key'"
+                status=1
+              fi
+            done
+            if grep -qn '\bTEAM\b' "$f"; then
+              echo "::error file=$f::unsubstituted TEAM placeholder"
+              status=1
+            fi
+            echo "checked $f"
+          done
+          exit $status
