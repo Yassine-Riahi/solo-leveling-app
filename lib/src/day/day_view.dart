@@ -9,6 +9,9 @@ import 'clock.dart';
 import 'day_location.dart';
 import 'day_palette.dart';
 
+/// Width of the left gutter carrying the hour labels.
+const double gutterWidth = 48;
+
 /// Vertical pixels used to draw one minute of the day.
 ///
 /// Window heights are a direct multiple of their real duration, so a longer
@@ -114,7 +117,8 @@ class _DayViewState extends State<DayView> {
   void _updateCentered() {
     if (!_scrollController.hasClients) return;
     final PrayerSchedule schedule = _schedule;
-    final tz.TZDateTime dayStart = schedule.fajr.start;
+    // Must match the timeline's own origin, which is snapped to the hour.
+    final tz.TZDateTime dayStart = _floorToHour(schedule.fajr.start);
     final double centreOffset = _scrollController.offset +
         _scrollController.position.viewportDimension / 2;
     final double minutes = centreOffset / pixelsPerMinute;
@@ -261,8 +265,10 @@ class _Timeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tz.TZDateTime dayStart = schedule.fajr.start;
-    final tz.TZDateTime dayEnd = schedule.isha.end;
+    // Snap the drawn span to whole hours so the first and last gridlines are
+    // hour boundaries, the way a calendar grid reads.
+    final tz.TZDateTime dayStart = _floorToHour(schedule.fajr.start);
+    final tz.TZDateTime dayEnd = _ceilToHour(schedule.isha.end);
     final double totalHeight =
         dayEnd.difference(dayStart).inMinutes * pixelsPerMinute;
 
@@ -270,10 +276,20 @@ class _Timeline extends StatelessWidget {
         moment.difference(dayStart).inMinutes * pixelsPerMinute;
 
     final List<Widget> children = <Widget>[
+      for (final tz.TZDateTime hour in _hoursBetween(dayStart, dayEnd))
+        Positioned(
+          top: topFor(hour),
+          left: 0,
+          right: 0,
+          child: _HourRow(
+            label: '${hour.hour.toString().padLeft(2, '0')}:00',
+            foreground: foreground,
+          ),
+        ),
       for (final PrayerWindow window in schedule.windows)
         Positioned(
           top: topFor(window.start),
-          left: 0,
+          left: gutterWidth,
           right: 0,
           height: window.duration.inMinutes * pixelsPerMinute,
           child: _WindowTile(
@@ -291,7 +307,7 @@ class _Timeline extends StatelessWidget {
         children.add(
           Positioned(
             top: topFor(localNow),
-            left: 0,
+            left: gutterWidth - 6,
             right: 0,
             child: _NowIndicator(foreground: foreground),
           ),
@@ -336,7 +352,7 @@ class _WindowTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: Key('window-${window.name.name}'),
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      margin: const EdgeInsets.only(left: 4, right: 12, top: 1, bottom: 1),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
@@ -394,6 +410,65 @@ class _NowIndicator extends StatelessWidget {
       ],
     );
   }
+}
+
+/// One hour boundary: a label in the gutter and a rule across the content.
+class _HourRow extends StatelessWidget {
+  const _HourRow({required this.label, required this.foreground});
+
+  final String label;
+  final Color foreground;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: <Widget>[
+        SizedBox(
+          width: gutterWidth,
+          child: Text(
+            label,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              color: foreground.withOpacity(0.65),
+              fontSize: 11,
+            ),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: foreground.withOpacity(0.18),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Every whole hour in `[start, end]`, inclusive of both ends.
+List<tz.TZDateTime> _hoursBetween(tz.TZDateTime start, tz.TZDateTime end) {
+  final List<tz.TZDateTime> hours = <tz.TZDateTime>[];
+  tz.TZDateTime cursor = start;
+  while (!cursor.isAfter(end)) {
+    hours.add(cursor);
+    cursor = cursor.add(const Duration(hours: 1));
+  }
+  return hours;
+}
+
+tz.TZDateTime _floorToHour(tz.TZDateTime moment) => tz.TZDateTime(
+      moment.location,
+      moment.year,
+      moment.month,
+      moment.day,
+      moment.hour,
+    );
+
+tz.TZDateTime _ceilToHour(tz.TZDateTime moment) {
+  final tz.TZDateTime floored = _floorToHour(moment);
+  return floored == moment ? floored : floored.add(const Duration(hours: 1));
 }
 
 String _prayerLabel(PrayerName name) {

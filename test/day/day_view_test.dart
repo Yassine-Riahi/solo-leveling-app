@@ -180,4 +180,37 @@ void main() {
 
     await _teardown(tester);
   });
+
+  testWidgets('draws an hour grid with a labelled gutter',
+      (WidgetTester tester) async {
+    await _pumpDayView(tester);
+
+    final PrayerSchedule schedule = computePrayerSchedule(
+      latitude: DayLocation.fallback.latitude,
+      longitude: DayLocation.fallback.longitude,
+      date: DateTime(2024, 6, 1),
+      timeZone: DayLocation.fallback.timeZone,
+    );
+
+    // The span runs from the hour at or before Fajr to the hour at or after
+    // Isha's end, inclusive of both boundaries.
+    final int firstHour = schedule.fajr.start.hour;
+    final DateTime end = schedule.isha.end;
+    final int spanHours =
+        end.difference(DateTime(end.year, end.month, end.day, firstHour))
+                .inHours +
+            (end.minute > 0 ? 1 : 0);
+
+    for (final String label in <String>['04:00', '12:00', '20:00']) {
+      expect(find.text(label), findsOneWidget, reason: 'missing $label');
+    }
+
+    final int labelCount = tester
+        .widgetList<Text>(find.byType(Text))
+        .where((Text t) => RegExp(r'^\d{2}:00$').hasMatch(t.data ?? ''))
+        .length;
+    expect(labelCount, spanHours + 1);
+
+    await _teardown(tester);
+  });
 }
